@@ -1,0 +1,12 @@
+version: '3.8'
+name: api-tibia-info
+services:
+  postgres:
+    container_name: node-tibia-info-back
+    image: bitnami/postgresql
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRESQL_USERNAME=admin
+      - POSTGRESQL_PASSWORD=admin
+      - POSTGRESQL_DATABASE=tibia_info
