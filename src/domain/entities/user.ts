@@ -1,10 +1,19 @@
+import { randomUUID } from "node:crypto";
+import { CreateUserDto } from "../../adapters/frameworks/express/dtos/users/create";
+import { UpdateUserDto } from "../../adapters/frameworks/express/dtos/users/update";
 import { Language } from "../enums/language";
 import { UserPolice } from "../enums/user-police";
 import AppError from "../errors/app-error";
-import DateInvalidError from "../errors/date-invalid";
-import IdInvalidError from "../errors/id-invalid";
 import { UserResponseDto } from "../interfaces/users/response";
-import { codeGenerator } from "../utils/code-generator";
+import { codeGenerator } from "../repositories/generators/code";
+import { Format } from "../utils/format-phone";
+import { validateBoolean } from "../validators/boolean";
+import { validateDate } from "../validators/date";
+import { validateEmail } from "../validators/email";
+import { validateImage } from "../validators/image";
+import { validateName } from "../validators/name";
+import { validateNullDate } from "../validators/null-date";
+import { validatePassword } from "../validators/password";
 import { validateUUID } from "../validators/uuid";
 
 interface UserInterface {
@@ -154,39 +163,19 @@ export class User {
   }
 
   setId(id: string): void {
-    if (validateUUID(id)) {
-      this.id = id;
-    } else {
-      throw new IdInvalidError();
-    }
+    this.id = validateUUID(id);
   }
   setCreatedAt(createdAt: Date): void {
-    if (createdAt instanceof Date) {
-      this.createdAt = createdAt;
-    } else {
-      throw new DateInvalidError();
-    }
+    this.createdAt = validateDate(createdAt);
   }
   setUpdatedAt(updatedAt: Date): void {
-    if (updatedAt instanceof Date) {
-      this.updatedAt = updatedAt;
-    } else {
-      throw new DateInvalidError();
-    }
+    this.updatedAt = validateDate(updatedAt);
   }
   setDeletedAt(deletedAt: Date | null): void {
-    if (deletedAt instanceof Date || null) {
-      this.deletedAt = deletedAt;
-    } else {
-      throw new DateInvalidError();
-    }
+    this.deletedAt = validateNullDate(deletedAt);
   }
   setBannedAt(bannedAt: Date | null): void {
-    if (bannedAt instanceof Date || null) {
-      this.bannedAt = bannedAt;
-    } else {
-      throw new DateInvalidError();
-    }
+    this.bannedAt = validateNullDate(bannedAt);
   }
   setCode(): void {
     this.code = codeGenerator();
@@ -195,56 +184,92 @@ export class User {
     this.key = "tibia-info.com " + codeGenerator();
   }
   setFirstName(firstName: string): void {
-    const regex = /^[a-zA-Z]+$/;
-    if (regex.test(firstName)) {
-      this.firstName =
-        firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
-    } else {
-      throw new AppError("firstName must be a string", 400);
-    }
+    this.firstName = validateName(firstName);
   }
   setLastName(lastName: string): void {
-    const regex = /^[a-zA-Z]+$/;
-    if (regex.test(lastName)) {
-      this.lastName =
-        lastName.charAt(0).toUpperCase() + lastName.slice(1).toLowerCase();
-    } else {
-      throw new AppError("lastName must be a string", 400);
-    }
+    this.lastName = validateName(lastName);
   }
   setEmail(email: string): void {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (regex.test(email)) {
-      this.email = email;
+    this.email = validateEmail(email);
+  }
+  setPasswordHash(password: string): void {
+    this.passwordHash = validatePassword(password);
+  }
+  setImageUri(imageUri: string | null): void {
+    this.imageUri = validateImage(imageUri);
+  }
+  setWhatsapp(whatsapp: string): void {
+    this.whatsapp = Format.phone(whatsapp);
+  }
+  setIsAdmin(isAdmin: boolean): void {
+    this.isAdmin = validateBoolean(isAdmin);
+  }
+  setIsEditor(isEditor: boolean): void {
+    this.isEditor = validateBoolean(isEditor);
+  }
+  setIsActive(isActive: boolean): void {
+    this.isActive = validateBoolean(isActive);
+  }
+  setDarkMode(darkMode: boolean): void {
+    this.darkMode = validateBoolean(darkMode);
+  }
+  setLanguage(language: Language): void {
+    if (Object.values(Language).includes(language)) {
+      switch (language) {
+        case Language.EN_US:
+          this.language = Language.EN_US;
+          break;
+        default:
+          this.language = Language.PT_BR;
+      }
     } else {
-      throw new AppError("invalid email");
+      throw new AppError("police needs to be normal, viewer, admin or super");
     }
   }
-  setPasswordHash(): string {
-    return this.passwordHash;
+  setPolice(police: UserPolice): void {
+    if (Object.values(UserPolice).includes(police)) {
+      switch (police) {
+        case UserPolice.ADMIN:
+          this.police = UserPolice.ADMIN;
+          break;
+        case UserPolice.SUPER:
+          this.police = UserPolice.SUPER;
+          break;
+        default:
+          this.police = UserPolice.NORMAL;
+      }
+    } else {
+      throw new AppError("police needs to be normal, viewer, admin or super");
+    }
   }
-  setImageUri(): string | null {
-    return this.imageUri;
+
+  create(dto: CreateUserDto): void {
+    this.setId(randomUUID());
+    this.setCreatedAt(new Date());
+    this.setUpdatedAt(new Date());
+    this.setDeletedAt(null);
+    this.setBannedAt(null);
+    this.setCode();
+    this.setKey();
+    this.setFirstName(dto.firstName);
+    this.setLastName(dto.lastName);
+    this.setEmail(dto.email);
+    this.setPasswordHash(dto.password);
+    this.setImageUri(null);
+    this.setWhatsapp(dto.whatsapp);
+    this.setIsAdmin(false);
+    this.setIsEditor(false);
+    this.setIsActive(false);
+    this.setDarkMode(false);
+    this.setLanguage(Language.PT_BR);
+    this.setPolice(UserPolice.NORMAL);
   }
-  setWhatsapp(): string | null {
-    return this.whatsapp;
-  }
-  setIsAdmin(): boolean {
-    return this.isAdmin;
-  }
-  setIsEditor(): boolean {
-    return this.isEditor;
-  }
-  setIsActive(): boolean {
-    return this.isActive;
-  }
-  setDarkMode(): boolean {
-    return this.darkMode;
-  }
-  setLanguage(): Language {
-    return this.language;
-  }
-  setPolice(): UserPolice {
-    return this.police;
+
+  update(dto: UpdateUserDto) {
+    this.setUpdatedAt(new Date());
+    if (dto.firstName) this.setFirstName(dto.firstName);
+    if (dto.lastName) this.setLastName(dto.lastName);
+    if (dto.email) this.setEmail(dto.email);
+    if (dto.whatsapp) this.setWhatsapp(dto.whatsapp);
   }
 }
